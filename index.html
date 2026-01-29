@@ -255,35 +255,23 @@ body * { position: relative; z-index: 1; }
 const MAX_ORBS = 30;
 
 function randomEdgePosition() {
-  const edge = Math.floor(Math.random() * 4); // 0=top,1=right,2=bottom,3=left
+  const edge = Math.floor(Math.random() * 4);
   let x, y;
 
   switch (edge) {
-    case 0: // top
-      x = Math.random() * window.innerWidth;
-      y = -20;
-      break;
-    case 1: // right
-      x = window.innerWidth + 20;
-      y = Math.random() * window.innerHeight;
-      break;
-    case 2: // bottom
-      x = Math.random() * window.innerWidth;
-      y = window.innerHeight + 20;
-      break;
-    case 3: // left
-      x = -20;
-      y = Math.random() * window.innerHeight;
-      break;
+    case 0: x = Math.random() * window.innerWidth; y = -40; break;       // top
+    case 1: x = window.innerWidth + 40; y = Math.random() * window.innerHeight; break; // right
+    case 2: x = Math.random() * window.innerWidth; y = window.innerHeight + 40; break; // bottom
+    case 3: x = -40; y = Math.random() * window.innerHeight; break;      // left
   }
 
   return { x, y };
 }
 
-function randomDrift() {
-  // Random drift distance in px
-  const dx = (Math.random() * 600 - 300).toFixed(1); // -300 to +300
-  const dy = (Math.random() * 600 - 300).toFixed(1);
+function longDriftVector() {
+  // Much longer drift to reach the center
+  const dx = (Math.random() * 1200 - 600).toFixed(1); // -600 to +600
+  const dy = (Math.random() * 1200 - 600).toFixed(1);
   return { dx, dy };
 }
 
@@ -291,7 +279,7 @@ function createOrb() {
   const orb = document.createElement("div");
   orb.className = "orb";
 
-  const size = Math.random() * 30 + 10;
+  const size = Math.random() * 40 + 20;
   orb.style.width = size + "px";
   orb.style.height = size + "px";
 
@@ -299,23 +287,25 @@ function createOrb() {
   orb.style.left = x + "px";
   orb.style.top = y + "px";
 
-  const duration = Math.random() * 10 + 10; // 10–20s
+  // Long lifespan: 20–35 seconds
+  const duration = Math.random() * 15 + 20;
   orb.style.animationDuration = duration + "s";
 
-  // Random drift vector
-  const { dx, dy } = randomDrift();
+  // Long drift vector
+  const { dx, dy } = longDriftVector();
   orb.style.setProperty("--dx", dx + "px");
   orb.style.setProperty("--dy", dy + "px");
 
-  // Mid-flight direction change
+  // Optional: mid-flight direction change (still subtle)
   setTimeout(() => {
-    const { dx: newDx, dy: newDy } = randomDrift();
+    const { dx: newDx, dy: newDy } = longDriftVector();
     orb.style.setProperty("--dx", newDx + "px");
     orb.style.setProperty("--dy", newDy + "px");
-  }, (duration * 500)); // halfway through
+  }, duration * 0.55 * 1000);
 
   document.body.appendChild(orb);
 
+  // Remove after animation completes (fade-out already handled in CSS)
   setTimeout(() => orb.remove(), duration * 1000);
 }
 
@@ -328,8 +318,9 @@ function maintainOrbs() {
 for (let i = 0; i < MAX_ORBS; i++) createOrb();
 
 // Maintain population
-setInterval(maintainOrbs, 1500);
+setInterval(maintainOrbs, 2000);
 </script>
 </body>
 </html>
+
 

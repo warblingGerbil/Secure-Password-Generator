@@ -22,17 +22,19 @@
     opacity: 0;
     transform: translate(0, 0);
   }
-  10% {
+  15% {
     opacity: 1;
   }
-  90% {
+  80% {
     opacity: 1;
+    transform: translate(var(--dx), var(--dy));
   }
   100% {
     opacity: 0;
-    transform: translate(var(--dx), var(--dy));
+    transform: translate(calc(var(--dx) * 1.3), calc(var(--dy) * 1.3));
   }
 }
+
 
 body * { position: relative; z-index: 1; }
   input[type="text"] {
@@ -330,3 +332,4 @@ setInterval(maintainOrbs, 1500);
 </script>
 </body>
 </html>
+

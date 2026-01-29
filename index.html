@@ -96,229 +96,227 @@ body * { position: relative; z-index: 1; }
     // Each version entry should include:
     //  - kdf: "PBKDF2" (or "Argon2id" if you later add WASM Argon2)
     //  - masterSalt: public salt string (can be changed per version)
-        //  - masterIter: iterations for hardening user Key -> master key
-        //  - accountIter: iterations for per-account derivation    //  - hash: hash algorithm for PBKDF2
-        //  - charset: allowed characters for final password
-        //  - length: desired password length
-        //
-        // To add a new version:
-        // 1) copy an existing entry, change parameters, give it a new key like "v2"
-        // 2) update DEFAULT_VERSION below if you want new generation to use the new version by default
-        const VERSIONS = {
-          "v1": {
-            kdf: "PBKDF2",
-            masterSalt: "my-app-master-salt-v1",
-            masterIter: 250000,
-            accountIter: 150000,
-            hash: "SHA-256",
-            charset: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*_-+",
-            length: 20
-          }
-          // Example future version:
-          // "v2": {
-          //   kdf: "Argon2id",
-          //   masterSalt: "my-app-master-salt-v2",
-          //   masterParams: { mem: 65536, iter: 3, parallelism: 1 },
-          //   accountParams: { mem: 65536, iter: 2, parallelism: 1 },
-          //   charset: "...",
-          //   length: 24
-          // }
-        };
-    
-        // Default encryption ver
-        const DEFAULT_VERSION = "v1";
-        
-        const versionSelect = document.getElementById("versionSelect");
-        const versionsListEl = document.getElementById("versionsList");
-    
-        function refreshVersionUI() {
-          // Clear select
-          versionSelect.innerHTML = "";
-          const lines = [];
-          Object.keys(VERSIONS).forEach(v => {
-            const opt = document.createElement("option");
-            opt.value = v;
-            opt.textContent = v;
-            versionSelect.appendChild(opt);
-    
-            const p = VERSIONS[v];
-            lines.push(`${v}: kdf=${p.kdf}; masterSalt="${p.masterSalt}"; masterIter=${p.masterIter}; accountIter=${p.accountIter}; hash=${p.hash}; len=${p.length}`);
-          });
-          versionSelect.value = DEFAULT_VERSION in VERSIONS ? DEFAULT_VERSION : Object.keys(VERSIONS)[0];
-          versionsListEl.textContent = lines.join("\n");
-        }
-        refreshVersionUI();
-    
-        async function deriveBitsPBKDF2(passwordBytes, saltBytes, iterations, bitLength, hash) {
-          const baseKey = await crypto.subtle.importKey(
-            "raw",
-            passwordBytes,
-            { name: "PBKDF2" },
-            false,
-            ["deriveBits"]
-          );
-    
-          const bits = await crypto.subtle.deriveBits(
-            {
-              name: "PBKDF2",
-              hash: hash,
-              salt: saltBytes,
-              iterations: iterations,
-            },
-            baseKey,
-            bitLength
-          );
-    
-          return new Uint8Array(bits);
-        }
-    
-        function bytesToPassword(bytes, charset, length) {
-          const chars = [];
-          const charsetLength = charset.length;
-    
-          for (let i = 0; i < length; i++) {
-            const b1 = bytes[(i * 2) % bytes.length];
-            const b2 = bytes[(i * 2 + 1) % bytes.length];
-            const combined = ((b1 << 8) | b2) >>> 0;
-            const index = combined % charsetLength;
-            chars.push(charset[index]);
-          }
-    
-          return chars.join("");
-        }
-    
-        async function generatePassword(Key, accountName, version) {
-          if (!Key || !accountName || !version) {
-            throw new Error("Key, account name, and version are required.");
-          }
-    
-          const params = VERSIONS[version];
-          if (!params) throw new Error("Unknown version: " + version);
-    
-          // 1) Harden the (possibly weak) Key into a strong master key
-          // Include version in the master salt so changing version changes outputs predictably
-          const masterSaltBytes = encoder.encode(params.masterSalt + "|" + version);
-          const masterKeyBytes = await deriveBitsPBKDF2(
-            encoder.encode(Key),
-            masterSaltBytes,
-            params.masterIter,
-            256, // bits
-            params.hash
-          );
-    
-          // 2) Derive per-account bits using the hardened master key and a salt that includes version
-          const accountSaltBytes = encoder.encode(version + "|" + accountName);
-          const accountBits = await deriveBitsPBKDF2(
-            masterKeyBytes,        accountSaltBytes,
-            params.accountIter,
-            256, // bits
-            params.hash
-          );
-    
-          // 3) Map derived bytes to password characters
-          return bytesToPassword(accountBits, params.charset, params.length);
-        }
-    
-        // Wire up UI
-        document.getElementById("generateBtn").addEventListener("click", async () => {
-          // Read the master key into the JS variable named "Key"
-          const Key = document.getElementById("masterKey").value.trim();
-          const accountName = document.getElementById("accountName").value.trim();
-          const version = document.getElementById("versionSelect").value;
-          const output = document.getElementById("passwordOutput");
-          output.value = "";
-    
-          try {
-            const pwd = await generatePassword(Key, accountName, version);
-            output.value = pwd;
-          } catch (err) {
-            console.error(err);
-            alert("Error: " + err.message);
-          }
-        });
-    
-      //Copy button
-        document.getElementById("copyBtn").addEventListener("click", async () => {
-          const out = document.getElementById("passwordOutput");
-          if (!out.value) return;
-          try {
-            //Use modern clipboard API when available
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              await navigator.clipboard.writeText(out.value);
-            } else {
-              out.select();
-              document.execCommand("copy");
-            }
-            //Provide minimal feedback via the button text temporarily
-            const btn = document.getElementById("copyBtn");
-            const old = btn.textContent;
-            btn.textContent = "Copied!";
-            setTimeout(() => btn.textContent = old, 1200);
-          } catch (e) {
-            console.error("Copy failed", e);
-            alert("Copy failed");
-          }
-        });
-    
-        // Optional: expose a small helper so you can change DEFAULT_VERSION at runtime in dev console
-        // e.g., window.setDefaultVersion("v2")
-        window.setDefaultVersion = function(v) {
-          if (v in VERSIONS) {
-            // Note: this only changes the in-memory default for this page load
-            // To change permanently, edit the DEFAULT_VERSION constant in the file.
-            versionSelect.value = v;
-          } else {
-            console.warn("Unknown version:", v);
-          }
-        };
-    
-      </script>
-      <!-- NEW: floating orb background script -->
-    <script>
-      const MAX_ORBS = 30;
-    
-      function createOrb() {
-        const orb = document.createElement("div");
-        orb.className = "orb";
-    
-        const size = Math.random() * 30 + 10; // 20–80px
-        orb.style.width = size + "px";
-        orb.style.height = size + "px";
-    
-        const startX = Math.random() * window.innerWidth;
-        const startY = Math.random() * window.innerHeight;
-        orb.style.left = startX + "px";
-        orb.style.top = startY + "px";
-    
-        const duration = Math.random() * 10 + 8; // 8–18s
-        orb.style.animationDuration = duration + "s";
-        
-        orb.style.animationDelay = (Math.random() * 5) + "s";
-        
-        document.body.appendChild(orb);
-    
-        setTimeout(() => {
-          orb.remove();
-        }, duration * 1000);
+    //  - masterIter: iterations for hardening user Key -> master key
+    //  - accountIter: iterations for per-account derivation
+    //  - hash: hash algorithm for PBKDF2
+    //  - charset: allowed characters for final password
+    //  - length: desired password length
+    //
+    // To add a new version:
+    // 1) copy an existing entry, change parameters, give it a new key like "v2"
+    // 2) update DEFAULT_VERSION below if you want new generation to use the new version by default
+
+    const VERSIONS = {
+      "v1": {
+        kdf: "PBKDF2",
+        masterSalt: "my-app-master-salt-v1",
+        masterIter: 250000,
+        accountIter: 150000,
+        hash: "SHA-256",
+        charset: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*_-+",
+        length: 20
       }
-    
-      function maintainOrbs() {
-        const currentOrbs = document.querySelectorAll(".orb").length;
-        if (currentOrbs < MAX_ORBS) {
-          createOrb();
-        }
+      // Example future version:
+      // "v2": {
+      //   kdf: "Argon2id",
+      //   masterSalt: "my-app-master-salt-v2",
+      //   masterParams: { mem: 65536, iter: 3, parallelism: 1 },
+      //   accountParams: { mem: 65536, iter: 2, parallelism: 1 },
+      //   charset: "...",
+      //   length: 24
+      // }
+    };
+
+    // Default encryption version
+    const DEFAULT_VERSION = "v1";
+
+    const versionSelect = document.getElementById("versionSelect");
+    const versionsListEl = document.getElementById("versionsList");
+
+    function refreshVersionUI() {
+      versionSelect.innerHTML = "";
+      const lines = [];
+
+      Object.keys(VERSIONS).forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        versionSelect.appendChild(opt);
+
+        const p = VERSIONS[v];
+        lines.push(
+          `${v}: kdf=${p.kdf}; masterSalt="${p.masterSalt}"; masterIter=${p.masterIter}; accountIter=${p.accountIter}; hash=${p.hash}; len=${p.length}`
+        );
+      });
+
+      versionSelect.value =
+        DEFAULT_VERSION in VERSIONS
+          ? DEFAULT_VERSION
+          : Object.keys(VERSIONS)[0];
+
+      versionsListEl.textContent = lines.join("\n");
+    }
+
+    refreshVersionUI();
+
+    async function deriveBitsPBKDF2(passwordBytes, saltBytes, iterations, bitLength, hash) {
+      const baseKey = await crypto.subtle.importKey(
+        "raw",
+        passwordBytes,
+        { name: "PBKDF2" },
+        false,
+        ["deriveBits"]
+      );
+
+      const bits = await crypto.subtle.deriveBits(
+        {
+          name: "PBKDF2",
+          hash: hash,
+          salt: saltBytes,
+          iterations: iterations
+        },
+        baseKey,
+        bitLength
+      );
+
+      return new Uint8Array(bits);
+    }
+
+    function bytesToPassword(bytes, charset, length) {
+      const chars = [];
+      const charsetLength = charset.length;
+
+      for (let i = 0; i < length; i++) {
+        const b1 = bytes[(i * 2) % bytes.length];
+        const b2 = bytes[(i * 2 + 1) % bytes.length];
+        const combined = ((b1 << 8) | b2) >>> 0;
+        const index = combined % charsetLength;
+        chars.push(charset[index]);
       }
-    
-      // Create initial orbs
-      for (let i = 0; i < MAX_ORBS; i++) {
+
+      return chars.join("");
+    }
+
+    async function generatePassword(Key, accountName, version) {
+      if (!Key || !accountName || !version) {
+        throw new Error("Key, account name, and version are required.");
+      }
+
+      const params = VERSIONS[version];
+      if (!params) throw new Error("Unknown version: " + version);
+
+      const masterSaltBytes = encoder.encode(params.masterSalt + "|" + version);
+      const masterKeyBytes = await deriveBitsPBKDF2(
+        encoder.encode(Key),
+        masterSaltBytes,
+        params.masterIter,
+        256,
+        params.hash
+      );
+
+      const accountSaltBytes = encoder.encode(version + "|" + accountName);
+      const accountBits = await deriveBitsPBKDF2(
+        masterKeyBytes,
+        accountSaltBytes,
+        params.accountIter,
+        256,
+        params.hash
+      );
+
+      return bytesToPassword(accountBits, params.charset, params.length);
+    }
+
+    // Wire up UI
+    document.getElementById("generateBtn").addEventListener("click", async () => {
+      const Key = document.getElementById("masterKey").value.trim();
+      const accountName = document.getElementById("accountName").value.trim();
+      const version = document.getElementById("versionSelect").value;
+      const output = document.getElementById("passwordOutput");
+
+      output.value = "";
+
+      try {
+        const pwd = await generatePassword(Key, accountName, version);
+        output.value = pwd;
+      } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+      }
+    });
+
+    // Copy button
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      const out = document.getElementById("passwordOutput");
+      if (!out.value) return;
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(out.value);
+        } else {
+          out.select();
+          document.execCommand("copy");
+        }
+
+        const btn = document.getElementById("copyBtn");
+        const old = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(() => (btn.textContent = old), 1200);
+      } catch (e) {
+        console.error("Copy failed", e);
+        alert("Copy failed");
+      }
+    });
+
+    // Allow changing default version at runtime
+    window.setDefaultVersion = function (v) {
+      if (v in VERSIONS) {
+        versionSelect.value = v;
+      } else {
+        console.warn("Unknown version:", v);
+      }
+    };
+
+  </script>
+
+  <!-- NEW: floating orb background script -->
+  <script>
+    const MAX_ORBS = 30;
+
+    function createOrb() {
+      const orb = document.createElement("div");
+      orb.className = "orb";
+
+      const size = Math.random() * 30 + 10;
+      orb.style.width = size + "px";
+      orb.style.height = size + "px";
+
+      const startX = Math.random() * window.innerWidth;
+      const startY = Math.random() * window.innerHeight;
+
+      orb.style.left = startX + "px";
+      orb.style.top = startY + "px";
+
+      const duration = Math.random() * 10 + 8;
+      orb.style.animationDuration = duration + "s";
+      orb.style.animationDelay = Math.random() * 5 + "s";
+
+      document.body.appendChild(orb);
+
+      setTimeout(() => {
+        orb.remove();
+      }, duration * 1000);
+    }
+
+    function maintainOrbs() {
+      const currentOrbs = document.querySelectorAll(".orb").length;
+      if (currentOrbs < MAX_ORBS) {
         createOrb();
       }
-    
-      // Keep topping up
-      setInterval(maintainOrbs, 1500);
-    </script>
-    
-    </body>
-    
-    </html>
-    
+    }
+
+    for (let i = 0; i < MAX_ORBS; i++) {
+      createOrb();
+    }
+
+    setInterval(maintainOrbs, 1500);
+  </script>

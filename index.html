@@ -90,9 +90,25 @@
     }
   </style>
 </head>
+<audio id="bgHum" src="electricHum.mp3" loop></audio>
+
+<script>
+  const hum = document.getElementById("bgHum");
+  hum.volume = 0.12;
+
+  hum.onerror = () => console.log("AUDIO FAILED TO LOAD");
+  hum.oncanplaythrough = () => console.log("AUDIO LOADED OK");
+
+  function startHum() {
+    hum.play();
+    document.removeEventListener("click", startHum);
+  }
+
+  document.addEventListener("click", startHum);
+</script>
+
 <body>
 
-  <audio id="bgHum" src="electricHum.mp3" loop></audio> <script> const hum = document.getElementById("bgHum"); hum.volume = 0.12; hum.onerror = () => console.log("AUDIO FAILED TO LOAD"); hum.oncanplaythrough = () => console.log("AUDIO LOADED OK"); function startHum() { hum.play(); document.removeEventListener("click", startHum); } document.addEventListener("click", startHum); </script>
   <h1>Secure Password Generator🔐</h1>
   <h2>Generate secure passwords for your accounts!</h2>
 
@@ -330,6 +346,7 @@
 
 </body>
 </html>
+
 
 
 

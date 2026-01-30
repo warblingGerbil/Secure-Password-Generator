@@ -101,7 +101,7 @@
   const track = audioCtx.createMediaElementSource(humElement);
 
   const gainNode = audioCtx.createGain();
-  gainNode.gain.value = 2.0;
+  gainNode.gain.value = 1.0;
 
   track.connect(gainNode).connect(audioCtx.destination);
 
@@ -355,6 +355,7 @@
 
 </body>
 </html>
+
 
 
 

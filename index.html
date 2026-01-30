@@ -57,15 +57,14 @@
       border-radius:4px; 
     }
 
-  body {
-  background-color: rgb(49, 48, 48);
-  color: rgb(52, 112, 240);
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-attachment: fixed;
-  }
-
+    body {
+      background-color: rgb(49, 48, 48);
+      color: rgb(52, 112, 240);
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-attachment: fixed;
+    }
 
     h1 { color: rgb(12, 141, 173); }
 
@@ -90,24 +89,26 @@
     }
   </style>
 </head>
-<audio id="bgHum" src="electricHum.mp3" loop></audio>
-
-<script>
-  const hum = document.getElementById("bgHum");
-  hum.volume = 0.12;
-
-  hum.onerror = () => console.log("AUDIO FAILED TO LOAD");
-  hum.oncanplaythrough = () => console.log("AUDIO LOADED OK");
-
-  function startHum() {
-    hum.play();
-    document.removeEventListener("click", startHum);
-  }
-
-  document.addEventListener("click", startHum);
-</script>
 
 <body>
+
+  <!-- AUDIO MUST BE INSIDE BODY -->
+  <audio id="bgHum" src="electricHum.mp3" loop></audio>
+
+  <script>
+    const hum = document.getElementById("bgHum");
+    hum.volume = 0.12;
+
+    hum.onerror = () => console.log("AUDIO FAILED TO LOAD");
+    hum.oncanplaythrough = () => console.log("AUDIO LOADED OK");
+
+    function startHum() {
+      hum.play();
+      document.removeEventListener("click", startHum);
+    }
+
+    document.addEventListener("click", startHum);
+  </script>
 
   <h1>Secure Password Generator🔐</h1>
   <h2>Generate secure passwords for your accounts!</h2>
@@ -346,17 +347,3 @@
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-

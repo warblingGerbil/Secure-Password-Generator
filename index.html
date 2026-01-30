@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <style>
-
     input[type="text"],
     select {
       color: rgb(12, 141, 173);
@@ -22,7 +21,6 @@
       max-width: 100%;
     }
 
-    /* Force dropdown menu styling (Firefox-safe) */
     select {
       appearance: none;
       -moz-appearance: none;
@@ -62,8 +60,9 @@
     body { 
       background-color: rgb(49, 48, 48); 
       color: rgb(52, 112, 240); 
-      background-size: cover;
+      background-size: contain;
       background-repeat: no-repeat;
+      background-position: center;
       background-attachment: fixed;
     }
 
@@ -126,7 +125,7 @@
   </div>
 
   <div class="note">
-    <strong>Available versions</strong> (parameters for each version are stored in the code):
+    <strong>Available versions</strong>
     <div id="versionsList" class="versions-list" aria-live="polite"></div>
   </div>
 
@@ -136,13 +135,12 @@
   </div>
 
   <script>
-
     const BACKGROUNDS = [
       "cyberBackground (Green1).png",
       "cyberBackground (Green2).png",
       "cyberBackground (Green3).png",
       "cyberBackground (Green4).png",
-      "cyberBackground (Green5).png"
+      "cyberBackground (Gray).png"
     ];
 
     const backgroundSelect = document.getElementById("backgroundSelect");
@@ -151,11 +149,10 @@
       BACKGROUNDS.forEach(bg => {
         const opt = document.createElement("option");
         opt.value = bg;
-        opt.textContent = bg;
+        const label = bg.replace(/\.[^/.]+$/, "");
+        opt.textContent = label;
         backgroundSelect.appendChild(opt);
       });
-
-      // Default background
       setBackground(BACKGROUNDS[0]);
       backgroundSelect.value = BACKGROUNDS[0];
     }
@@ -296,7 +293,6 @@
         const pwd = await generatePassword(Key, accountName, version);
         output.value = pwd;
       } catch (err) {
-        console.error(err);
         alert("Error: " + err.message);
       }
     });
@@ -319,7 +315,6 @@
         setTimeout(() => (btn.textContent = old), 1200);
 
       } catch (e) {
-        console.error("Copy failed", e);
         alert("Copy failed");
       }
     });
@@ -327,8 +322,6 @@
     window.setDefaultVersion = function (v) {
       if (v in VERSIONS) {
         versionSelect.value = v;
-      } else {
-        console.warn("Unknown version:", v);
       }
     };
   </script>
